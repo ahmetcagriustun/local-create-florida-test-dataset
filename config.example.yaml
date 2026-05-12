@@ -1,0 +1,129 @@
+project:
+  name: "noaa-accessais-second-region-testset"
+  description: "External-region Sentinel-2 ship patch generation from NOAA bulk AIS"
+
+study_area:
+  name: "south_florida_florida_straits"
+  start_date: "2023-01-01"
+  end_date: "2023-06-30"
+  bbox:
+    min_lon: -82.0
+    min_lat: 24.2
+    max_lon: -79.4
+    max_lat: 27.2
+
+paths:
+  raw_dir: "./data/raw/noaa_bulk"
+  filtered_dir: "./data/filtered/south_florida_2023h1"
+  merged_dir: "./data/merged"
+  sentinel2_dir: "./data/raw/sentinel2_selected_florida_relaxed"
+  outputs_dir: "./outputs"
+
+download:
+  url_template: "https://noaaocm.blob.core.windows.net/ais/csv2/csv{year}/ais-{date}.csv.zst"
+  timeout_seconds: 180
+  chunk_bytes: 1048576
+  skip_existing: true
+
+filtering:
+  chunksize: 200000
+  output_compression: "gzip"
+  keep_only_target_vessel_types: true
+  target_codes:
+    - 30
+    - 36
+    - 37
+    - 60
+    - 61
+    - 62
+    - 63
+    - 64
+    - 65
+    - 66
+    - 67
+    - 68
+    - 69
+    - 70
+    - 71
+    - 72
+    - 73
+    - 74
+    - 75
+    - 76
+    - 77
+    - 78
+    - 79
+    - 80
+    - 81
+    - 82
+    - 83
+    - 84
+    - 85
+    - 86
+    - 87
+    - 88
+    - 89
+
+postgres:
+  host: "localhost"
+  port: 5432
+  dbname: "aws"
+  user: "postgres"
+  password: "change_me"
+  schema: "public"
+  table: "noaa_ais_south_florida_2023h1"
+  ship_raw_table: "public.florida_ship_raw_data"
+
+sentinel2_metadata:
+  endpoint: "https://catalogue.dataspace.copernicus.eu/odata/v1/Products"
+  collection_name: "SENTINEL-2"
+  product_type: "S2MSI2A"
+  project_area_table: "public.florida_project_area"
+  project_area_filter_mode: "envelope"
+  top: 50
+  request_timeout_seconds: 120
+  request_max_attempts: 5
+  request_retry_backoff_seconds: 3.0
+  max_cloud_cover: 20.0
+  schema: "public"
+  table: "florida_sentinel2_metadata"
+
+sentinel2_download:
+  selected_table: "public.florida_sentinel2_metadata_selected_priority"
+  output_dir: "./data/raw/sentinel2_selected_florida_relaxed"
+  timeout_seconds: 180
+  chunk_bytes: 1048576
+  skip_existing: true
+
+sentinel2_index:
+  download_index_table: "public.florida_sentinel2_download_index"
+  download_index_geom_table: "public.florida_sentinel2_download_index_geom"
+  metadata_source_table: "public.florida_sentinel2_metadata"
+
+ais_postgres:
+  source_date_table: "public.florida_sentinel2_download_index"
+  target_table: "public.florida_ship_raw_data"
+  chunksize: 200000
+  keep_only_bbox: true
+
+copernicus:
+  username: "<copernicus-username>"
+  password: "<copernicus-password>"
+
+patches:
+  source_table: "public.florida_ship_predicted_positions_open_sea"
+  only_target_classes: true
+  patch_size_px: 128
+  bands:
+    - B02
+    - B03
+    - B04
+    - B08
+  save_tci: true
+  tci_in_class_output_dir: true
+  skip_existing: true
+  raw_output_dir: "./data/patches/florida_project_area_6class_raw"
+  class_output_dir: "./data/patches/florida_project_area_6class_by_type"
+  tci_output_dir: "./data/patches/florida_project_area_6class_by_type"
+  manifest_path: "./outputs/florida_project_area_6class_patch_manifest.csv"
+  summary_path: "./outputs/florida_project_area_6class_patch_summary.json"
