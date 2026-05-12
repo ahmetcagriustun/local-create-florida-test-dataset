@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+config.local.yaml
+data/raw/
+data/normalized/
+outputs/
+tmp/
